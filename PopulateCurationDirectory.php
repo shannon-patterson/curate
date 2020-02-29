@@ -9,12 +9,14 @@
 namespace CurationPipeline;
 
 
-class PopulateCurationDirectory
-{
+use Directory;
+use Exception;
+
+class PopulateCurationDirectory {
     private $sourcePath = '';
     private $curationPath = '';
 
-    private $filesToHave = 10;
+    private $filesToHave = 6;
 
     private $ignoredTokens = ['&', 'and', 'the'];
 
@@ -31,27 +33,28 @@ class PopulateCurationDirectory
         $this->filesToHave = $x;
     }
 
+    /**
+     * @throws Exception
+     */
     public function run() {
         $curationDir = dir($this->curationPath);
         $sourceDir = dir($this->sourcePath);
 
         if (!$curationDir) {
-            throw new \Exception("Invalid Curation Directory: {$this->curationPath}");
+            throw new Exception("Invalid Curation Directory: {$this->curationPath}");
         }
 
         $artistDirectories = $this->collectDirectories($curationDir);
 
         foreach ($artistDirectories as $artistDirectory) {
-
             if (!$this->fileExistsForDirectory($artistDirectory, $curationDir)) {
-
                 if ($this->fileCount($curationDir) < $this->filesToHave) {
                     $moved = $this->getArtistFile($artistDirectory, $sourceDir, $curationDir);
 
                     if (!$moved) {
                         $fullArtistDirPath = $curationDir->path . '/' . $artistDirectory;
 
-                        $artistCompleteTrigger = new \CurationPipeline\ArtistCompleteTrigger(
+                        $artistCompleteTrigger = new ArtistCompleteTrigger(
                             $fullArtistDirPath, $sourceDir->path
                         );
                         $artistCompleteTrigger->run();
@@ -66,7 +69,7 @@ class PopulateCurationDirectory
     }
 
     /**
-     * @param \Directory $curationDir
+     * @param Directory $curationDir
      *
      * @return array
      */
@@ -75,7 +78,7 @@ class PopulateCurationDirectory
 
         while (false !== ($entry = $curationDir->read())) {
             if ($entry == '.' || $entry == '..') {
-
+                // skip
             } else {
                 $fullPath = $curationDir->path . '/' . $entry;
 
@@ -89,10 +92,10 @@ class PopulateCurationDirectory
     }
 
     /**
-     * @param string $directoryName
-     * @param \Directory $curationDir
+     * @param string    $directoryName
+     * @param Directory $curationDir
      *
-     * @return boolean
+     * @return bool
      */
     private function fileExistsForDirectory($directoryName, $curationDir) {
 
@@ -102,7 +105,7 @@ class PopulateCurationDirectory
         if (strpos($directoryName, ' ') !== false) {
             $tokens = explode(' ', $directoryName);
             foreach ($tokens as $key => $token) {
-                if (in_array($token, $this->ignoredTokens)) {
+                if (in_array(strtolower($token), $this->ignoredTokens)) {
                     unset($tokens[$key]);
                 }
             }
@@ -127,7 +130,7 @@ class PopulateCurationDirectory
     }
 
     /**
-     * @param \Directory $directory
+     * @param Directory $directory
      *
      * @return int
      */
@@ -147,11 +150,12 @@ class PopulateCurationDirectory
     }
 
     /**
-     * @param string $artist
-     * @param \Directory $sourceDir
-     * @param \Directory $destinationDir
+     * @param string    $artist
+     * @param Directory $sourceDir
+     * @param Directory $destinationDir
      *
-     * @return boolean
+     * @return bool
+     * @throws Exception
      */
     public function getArtistFile($artist, $sourceDir, $destinationDir) {
         // $sourceDir->rewind();
@@ -169,7 +173,7 @@ class PopulateCurationDirectory
             $rs = rename($sourceDirName . '/' . $fileToMove, $destinationDirName . '/' . $fileToMove);
 
             if ($rs) {
-                $trigger = new \CurationPipeline\EnqueueToVLCTrigger($destinationDirName . '/' . $fileToMove);
+                $trigger = new EnqueueToVLCTrigger($destinationDirName . '/' . $fileToMove);
                 $trigger->run();
             }
 
@@ -180,8 +184,9 @@ class PopulateCurationDirectory
     }
 
     /**
-     * @param string $artist
-     * @param \Directory $sourceDir
+     * @param string    $artist
+     * @param Directory $sourceDir
+     *
      * @return array
      */
     public function collectMatches($artist, $sourceDir) {
@@ -192,7 +197,7 @@ class PopulateCurationDirectory
             $tokens = explode(' ', $artist);
 
             foreach ($tokens as $key => $token) {
-                if (in_array($token, $this->ignoredTokens)) {
+                if (in_array(strtolower($token), $this->ignoredTokens)) {
                     unset($tokens[$key]);
                 }
             }
@@ -215,10 +220,10 @@ class PopulateCurationDirectory
     }
 
     /**
-     * @param \Directory $sourceDir
-     * @param \Directory $destinationDir
+     * @param Directory $sourceDir
+     * @param Directory $destinationDir
      *
-     * @return boolean
+     * @return bool
      */
     private function getRandomFile($sourceDir, $destinationDir) {
         $sourceDir->rewind();
@@ -247,7 +252,7 @@ class PopulateCurationDirectory
                         $rs = rename($sourceDirName . '/' . $entry, $destinationDirName . '/' . $entry);
 
                         if ($rs) {
-                            $trigger = new \CurationPipeline\EnqueueToVLCTrigger($destinationDirName . '/' . $entry);
+                            $trigger = new EnqueueToVLCTrigger($destinationDirName . '/' . $entry);
                             $trigger->run();
                         }
 

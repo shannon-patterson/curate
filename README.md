@@ -45,3 +45,4 @@ but that is a much longer term goal.
 * move PHP classes into proper folder structure 
   according to the namespaces I have created
 * start on webapp part of project
+* update this document to contain Features, Installation and Use Instructions, Contribution suggestions, and a Code of Conduct sections.
