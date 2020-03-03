@@ -7,7 +7,7 @@ class EnqueueToVLCTrigger
 {
 
     private $fileName;
-    private $VLCPath = 'C:\Program Files (x86)\VideoLAN\VLC\vlc.exe';
+    private $VLCPath = 'C:\Program Files\VideoLAN\VLC\vlc.exe';
 
     public function __construct($fileName) {
 
@@ -19,7 +19,7 @@ class EnqueueToVLCTrigger
             throw new \Exception("{$this->fileName} is not a file.");
         }
 
-        $command = "\"{$this->VLCPath}\" --playlist-enqueue \"{$this->fileName}\"";
-        @exec($command);
+        $command = "\"{$this->VLCPath}\" --playlist-enqueue \"{$this->fileName}\" --quiet";
+        exec($command, $returnedText);
     }
 }

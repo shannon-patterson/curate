@@ -16,7 +16,7 @@ class PopulateCurationDirectory {
     private $sourcePath = '';
     private $curationPath = '';
 
-    private $filesToHave = 6;
+    private $filesToHave = 10;
 
     private $ignoredTokens = ['&', 'and', 'the'];
 
