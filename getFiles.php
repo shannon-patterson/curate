@@ -6,9 +6,8 @@ require_once("ArtistCompleteTrigger.php");
 require_once("PopulateCurationDirectory.php");
 require_once("EnqueueToVLCTrigger.php");
 
-$sourceDir = "E:\Shannon\Media\sorting\source";
-$curationDir = "E:\Shannon\Media\sorting\music";
-$destinationDir = "E:\Shannon\Media\Music";
+$sourceDir = "C:\Users\shann\sorting\source";
+$curationDir = "C:\Users\shann\sorting\music";
 $filesToHave = 10;
 
 $curation = dir($curationDir);
