@@ -7,6 +7,7 @@ use Exception;
 
 class ArtistCompleteTrigger {
 
+    private $mp3TagPath = "C:\Program Files (x86)\Mp3tag\Mp3tag.exe";
     private $iterationLimit = 3;
     private $artistDir = '';
     private $sourcePath = '';
@@ -39,9 +40,16 @@ class ArtistCompleteTrigger {
             $this->updateIterationDir($artistDir, $iterationNumber, $iterationNumber + 1);
 
         } else {
+            $filesCount = $this->getFileCount($artistDir);
 
-            echo "ARTIST has reached max iteration count. {$artistDir->path} \n";
-            //            throw new \Exception("Not yet configured to move files to final destination.  ARTIST = {$artistDir->path}");
+            if ($filesCount > 0) {
+                echo "ARTIST has reached max iteration count. {$artistDir->path} \n";
+
+                $command =  '"' . $this->mp3TagPath . '" /fp:' . '"' . $artistDir->path . '"';
+                pclose(popen(escapeshellcmd('start /B cmd /C "' . $command . ' >NUL 2>NUL"'), 'r'));
+            } else {
+                echo "Empty directory can be deleted. {$artistDir->path} \n";
+            }
         }
 
 
@@ -65,6 +73,20 @@ class ArtistCompleteTrigger {
         }
 
         return false;
+    }
+
+    private function getFileCount(Directory $dir) {
+        $dir->rewind();
+
+        $count = 0;
+
+        while (false !== ($filename = $dir->read())) {
+            if (!is_dir($dir->path . '/' . $filename)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     /**
