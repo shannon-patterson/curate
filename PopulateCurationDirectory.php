@@ -13,6 +13,7 @@ use Directory;
 use Exception;
 
 class PopulateCurationDirectory {
+    private $primarySourcePath = null;
     private $sourcePath = '';
     private $curationPath = '';
 
@@ -20,7 +21,8 @@ class PopulateCurationDirectory {
 
     private $ignoredTokens = ['&', 'and', 'the'];
 
-    public function __construct($sourceDirectoryPath, $curationDirectoryPath) {
+    public function __construct($sourceDirectoryPath, $curationDirectoryPath, $primarySourceDirectoryPath = null) {
+        $this->primarySourcePath = $primarySourceDirectoryPath;
         $this->sourcePath = $sourceDirectoryPath;
         $this->curationPath = $curationDirectoryPath;
     }
@@ -39,17 +41,43 @@ class PopulateCurationDirectory {
     public function run() {
         $curationDir = dir($this->curationPath);
         $sourceDir = dir($this->sourcePath);
+        $primarySourceDir = null;
+
+        if ($this->primarySourcePath) {
+            $primarySourceDir = dir($this->primarySourcePath);
+        }
+
 
         if (!$curationDir) {
             throw new Exception("Invalid Curation Directory: {$this->curationPath}");
+        }
+        if (!$primarySourceDir && $this->primarySourcePath) {
+            throw new Exception(("Invalid primary source directory: {$this->primarySourcePath}"));
+        }
+        if (!$sourceDir) {
+            throw new Exception(("Invalid source directory: {$this->sourcePath}"));
         }
 
         $artistDirectories = $this->collectDirectories($curationDir);
 
         foreach ($artistDirectories as $artistDirectory) {
+            if ($this->fileCount($curationDir) >= $this->filesToHave) {
+                echo "==> Complete <=== \n";
+                return;
+            }
+
+            echo "==> " . $artistDirectory . "\n";
+
             if (!$this->fileExistsForDirectory($artistDirectory, $curationDir)) {
                 if ($this->fileCount($curationDir) < $this->filesToHave) {
-                    $moved = $this->getArtistFile($artistDirectory, $sourceDir, $curationDir);
+                    $moved = false;
+                    if ($primarySourceDir) {
+                        $moved = $this->getArtistFile($artistDirectory, $primarySourceDir, $curationDir);
+                    }
+
+                    if (!$moved) {
+                        $moved = $this->getArtistFile($artistDirectory, $sourceDir, $curationDir);
+                    }
 
                     if (!$moved) {
                         $fullArtistDirPath = $curationDir->path . '/' . $artistDirectory;
@@ -64,7 +92,21 @@ class PopulateCurationDirectory {
         }
 
         while ($this->fileCount($curationDir) < $this->filesToHave) {
-            $this->getRandomFile($sourceDir, $curationDir);
+            echo "==> Get Random File\n";
+            $found = null;
+
+            if ($primarySourceDir) {
+                $found = $this->getRandomFile($primarySourceDir, $curationDir);
+            }
+
+            if (!$found) {
+                $this->getRandomFile($sourceDir, $curationDir);
+            }
+        }
+
+        if ($this->fileCount($curationDir) >= $this->filesToHave) {
+            echo "==> Complete <=== \n";
+            return;
         }
     }
 
@@ -121,10 +163,14 @@ class PopulateCurationDirectory {
             if ($isMatch) {
                 $fullPath = $curationDir->path . '/' . $entry;
                 if (!is_dir($fullPath)) {
+//                    echo "[{$directoryName}] matches {$entry}\n";
+
                     return true;
                 }
             }
         }
+
+//        echo "[{$directoryName}] no matches in current directory\n";
 
         return false;
     }
@@ -165,6 +211,7 @@ class PopulateCurationDirectory {
         if (count($matches)) {
             $fileToMove = $matches[rand(0, count($matches) - 1)];
 
+//            echo "[$artist] " . $fileToMove . "\n";
             echo $fileToMove . "\n";
 
             $sourceDirName = $sourceDir->path;
@@ -237,27 +284,30 @@ class PopulateCurationDirectory {
 
         if ($fileCount) {
             $sourceDir->rewind();
-            $fileCount = rand(0, $fileCount - 1);
+            $fileCount = rand(1, $fileCount);
 
             while (false !== ($entry = $sourceDir->read())) {
-                if (is_file($sourceDir->path . '/' . $entry)) {
-                    $fileCount--;
-
-                    if ($fileCount == 1) {
-                        echo $entry . "\n";
-
-                        $sourceDirName = $sourceDir->path;
-                        $destinationDirName = $destinationDir->path;
-
-                        $rs = rename($sourceDirName . '/' . $entry, $destinationDirName . '/' . $entry);
-
-                        if ($rs) {
-                            $trigger = new EnqueueToVLCTrigger($destinationDirName . '/' . $entry);
-                            $trigger->run();
-                        }
-
-                    }
+                if ($entry == '.' || $entry == '..') {
+                    continue;
                 }
+
+                if (is_file($sourceDir->path . '/' . $entry) && $fileCount == 1) {
+                    echo $entry . "\n";
+
+                    $sourceDirName = $sourceDir->path;
+                    $destinationDirName = $destinationDir->path;
+
+                    $rs = rename($sourceDirName . '/' . $entry, $destinationDirName . '/' . $entry);
+
+                    if ($rs) {
+                        $trigger = new EnqueueToVLCTrigger($destinationDirName . '/' . $entry);
+                        $trigger->run();
+                    }
+
+                    return true;
+                }
+
+                $fileCount--;
             }
         }
 
