@@ -17,7 +17,7 @@ class PopulateCurationDirectory {
     private $sourcePath = '';
     private $curationPath = '';
 
-    private $filesToHave = 10;
+    private $columnHeight = 19;
 
     private $ignoredTokens = ['&', 'and', 'the'];
 
@@ -25,14 +25,6 @@ class PopulateCurationDirectory {
         $this->primarySourcePath = $primarySourceDirectoryPath;
         $this->sourcePath = $sourceDirectoryPath;
         $this->curationPath = $curationDirectoryPath;
-    }
-
-    public function getFilesToHave() {
-        return $this->filesToHave;
-    }
-
-    public function setFilesToHave($x) {
-        $this->filesToHave = $x;
     }
 
     /**
@@ -61,7 +53,7 @@ class PopulateCurationDirectory {
         $artistDirectories = $this->collectDirectories($curationDir);
 
         foreach ($artistDirectories as $artistDirectory) {
-            if ($this->fileCount($curationDir) >= $this->filesToHave) {
+            if ($this->fileCount($curationDir, true) >= $this->columnHeight) {
                 echo "==> Complete <=== \n";
                 return;
             }
@@ -69,7 +61,7 @@ class PopulateCurationDirectory {
             echo "==> " . $artistDirectory . "\n";
 
             if (!$this->fileExistsForDirectory($artistDirectory, $curationDir)) {
-                if ($this->fileCount($curationDir) < $this->filesToHave) {
+                if ($this->fileCount($curationDir, true) < $this->columnHeight) {
                     $moved = false;
                     if ($primarySourceDir) {
                         $moved = $this->getArtistFile($artistDirectory, $primarySourceDir, $curationDir);
@@ -91,7 +83,7 @@ class PopulateCurationDirectory {
             }
         }
 
-        while ($this->fileCount($curationDir) < $this->filesToHave) {
+        while ($this->fileCount($curationDir, true) < $this->columnHeight) {
             echo "==> Get Random File\n";
             $found = null;
 
@@ -104,7 +96,7 @@ class PopulateCurationDirectory {
             }
         }
 
-        if ($this->fileCount($curationDir) >= $this->filesToHave) {
+        if ($this->fileCount($curationDir, true) >= $this->columnHeight) {
             echo "==> Complete <=== \n";
             return;
         }
@@ -180,13 +172,18 @@ class PopulateCurationDirectory {
      *
      * @return int
      */
-    private function fileCount($directory) {
+    private function fileCount($directory, $includeDirectory = false) {
         $directory->rewind();
 
         $count = 0;
         while (false !== ($entry = $directory->read())) {
+            if ($entry == '.' || $entry == '..') {
+                continue;
+            }
+
             $fullPath = $directory->path . '/' . $entry;
-            if (!is_dir($fullPath)) {
+
+            if (!is_dir($fullPath) || $includeDirectory) {
                 $count++;
             }
         }
@@ -194,6 +191,7 @@ class PopulateCurationDirectory {
         //        echo $count . "\n";
         return $count;
     }
+
 
     /**
      * @param string    $artist
